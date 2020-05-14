@@ -29,7 +29,7 @@ def clamp(input, min, max, inplace=False):
     Clamp tensor input to (min, max).
     input: input tensor to be clamped
     """
-
+#clamp操作，inplace直接覆盖
     if inplace:
         input.clamp_(min, max)
         return input
@@ -43,22 +43,24 @@ def linear_quantize(input, scale, zero_point, inplace=False):
     scale: scaling factor for quantization
     zero_pint: shift for quantization
     """
-
+    #卷积权重和激活reshape
     # reshape scale and zeropoint for convolutional weights and activation
     if len(input.shape) == 4:
         scale = scale.view(-1, 1, 1, 1)
         zero_point = zero_point.view(-1, 1, 1, 1)
+    #全连接层权重reshape
     # reshape scale and zeropoint for linear weights
     elif len(input.shape) == 2:
         scale = scale.view(-1, 1)
         zero_point = zero_point.view(-1, 1)
     # mapping single-precision input to integer values with the given scale and zeropoint
+    #量化操作
     if inplace:
         input.mul_(scale).sub_(zero_point).round_()
         return input
     return torch.round(scale * input - zero_point)
 
-
+#去量化
 def linear_dequantize(input, scale, zero_point, inplace=False):
     """
     Map integer input tensor to fixed point float point with given scaling factor and zeropoint.
@@ -81,7 +83,7 @@ def linear_dequantize(input, scale, zero_point, inplace=False):
         return input
     return (input + zero_point) / scale
 
-
+#给定比特数，min，max计算零点和尺度因子（非对称线性量化）
 def asymmetric_linear_quantization_params(num_bits,
                                           saturation_min,
                                           saturation_max,
@@ -97,6 +99,7 @@ def asymmetric_linear_quantization_params(num_bits,
     zero_point = scale * saturation_min
 
     if integral_zero_point:
+    #零点round为整数
         if isinstance(zero_point, torch.Tensor):
             zero_point = zero_point.round()
         else:
@@ -105,7 +108,7 @@ def asymmetric_linear_quantization_params(num_bits,
         zero_point += 2**(num_bits - 1)
     return scale, zero_point
 
-
+#非对称量化
 class AsymmetricQuantFunction(Function):
     """
     Class to quantize the given floating-point values with given range and bit-setting.
